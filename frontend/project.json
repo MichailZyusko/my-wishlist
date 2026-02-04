@@ -1,0 +1,36 @@
+{
+  "name": "frontend",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "frontend",
+  "projectType": "application",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project frontend --web",
+  "targets": {
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": [
+        "{options.outputPath}"
+      ],
+      "options": {
+        "root": "frontend",
+        "outputPath": "dist/frontend",
+        "nextConfig": "frontend/next.config.js"
+      }
+    },
+    "serve": {
+      "executor": "@nx/next:server",
+      "options": {
+        "buildTarget": "frontend:build",
+        "dev": true,
+        "port": 4200
+      }
+    },
+    "start": {
+      "executor": "@nx/next:start",
+      "options": {
+        "buildTarget": "frontend:build",
+        "port": 4200
+      }
+    }
+  }
+}
