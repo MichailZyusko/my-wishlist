@@ -2,14 +2,13 @@
 
 import { signIn, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 
 export default function Index() {
   const router = useRouter();
   const { data: session } = useSession();
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (session?.user) {
@@ -59,7 +58,6 @@ export default function Index() {
               Signed in as {session.user.email}
             </p>
           )}
-          {error && <p className="text-sm text-red-600">{error}</p>}
         </Card>
       </div>
     </main>

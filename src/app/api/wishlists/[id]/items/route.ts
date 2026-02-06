@@ -32,7 +32,7 @@ export async function POST(request: Request, { params }: Params) {
       },
     });
     return NextResponse.json(item);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Invalid item URL' }, { status: 400 });
   }
 }

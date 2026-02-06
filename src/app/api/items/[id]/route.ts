@@ -30,7 +30,7 @@ export async function PATCH(request: Request, { params }: Params) {
       },
     });
     return NextResponse.json(updated);
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Invalid item URL' }, { status: 400 });
   }
 }

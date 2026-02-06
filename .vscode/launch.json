@@ -4,20 +4,13 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Debug backend with Nx",
+      "name": "Next.js: debug server",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["nx", "serve", "backend"],
-      "env": {
-        "NODE_OPTIONS": "--inspect=9229"
-      },
+      "runtimeArgs": ["next", "dev"],
       "console": "integratedTerminal",
       "internalConsoleOptions": "neverOpen",
       "skipFiles": ["<node_internals>/**"],
-      "sourceMaps": true,
-      "outFiles": [
-        "${workspaceFolder}/backend/dist/**/*.(m|c|)js",
-        "!**/node_modules/**"
-      ]
+      "sourceMaps": true
     }
   ]
 }
