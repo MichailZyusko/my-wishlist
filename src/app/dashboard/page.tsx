@@ -133,7 +133,10 @@ export default function DashboardPage() {
                   </Link>
                   <Link
                     href={`/share/${wishlist.publicId}`}
-                    className={buttonVariants({ size: 'sm', variant: 'outline' })}
+                    className={buttonVariants({
+                      size: 'sm',
+                      variant: 'outline',
+                    })}
                   >
                     Share
                   </Link>

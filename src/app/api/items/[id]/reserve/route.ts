@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { emitWishlistEvent } from '@/lib/wishlist-events';
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -26,5 +27,18 @@ export async function POST(request: Request, { params }: Params) {
       reservedByEmail: body?.reservedByEmail ?? null,
     },
   });
+
+  // Notify every connected client watching this wishlist in real-time
+  emitWishlistEvent(item.wishlistId, {
+    type: 'reservation_created',
+    itemId: id,
+    reservation: {
+      id: reservation.id,
+      reservedByName: reservation.reservedByName,
+      reservedByEmail: reservation.reservedByEmail,
+      reservedAt: reservation.reservedAt.toISOString(),
+    },
+  });
+
   return NextResponse.json(reservation);
 }

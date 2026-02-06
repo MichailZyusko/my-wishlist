@@ -53,9 +53,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   React.useEffect(() => {
     return () => {
-      Object.values(timeouts.current).forEach((timeout) =>
-        window.clearTimeout(timeout),
-      );
+      Object.values(timeouts.current).forEach((timeout) => {
+        window.clearTimeout(timeout);
+      });
       timeouts.current = {};
     };
   }, []);

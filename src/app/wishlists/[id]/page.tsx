@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -12,10 +13,16 @@ import { ConfirmDialog } from '@/components/ui/modal';
 import { Spinner } from '@/components/ui/spinner';
 import { useToast } from '@/components/ui/toast';
 import { api, type Item, type Wishlist } from '@/lib/api';
+import { useWishlistEvents } from '@/hooks/use-wishlist-events';
 
 type ItemForm = {
   name: string;
   url: string;
+};
+
+type LinkPreview = {
+  title?: string;
+  image?: string;
 };
 
 export default function WishlistDetailPage() {
@@ -24,6 +31,12 @@ export default function WishlistDetailPage() {
   const { pushToast } = useToast();
   const [itemToRemove, setItemToRemove] = useState<Item | null>(null);
   const { register, handleSubmit, reset, formState } = useForm<ItemForm>();
+  const [previews, setPreviews] = useState<Record<string, LinkPreview>>({});
+  const previewsRef = useRef(previews);
+
+  useEffect(() => {
+    previewsRef.current = previews;
+  }, [previews]);
 
   const {
     data: wishlist,
@@ -35,6 +48,13 @@ export default function WishlistDetailPage() {
     queryFn: () => api.getWishlist(params?.id ?? ''),
     enabled: Boolean(params?.id),
   });
+
+  // Real-time: re-fetch wishlist data whenever a reservation changes
+  const handleWishlistEvent = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['wishlist', params?.id] });
+  }, [queryClient, params?.id]);
+
+  useWishlistEvents(params?.id, handleWishlistEvent);
 
   const addItem = useMutation({
     mutationFn: (payload: ItemForm) => api.addItem(params?.id ?? '', payload),
@@ -124,6 +144,38 @@ export default function WishlistDetailPage() {
     }
   };
 
+  useEffect(() => {
+    if (!wishlist) {
+      return;
+    }
+    let cancelled = false;
+    const loadPreview = async (item: Item) => {
+      if (!item.url || previewsRef.current[item.id]) {
+        return;
+      }
+      try {
+        const response = await fetch(
+          `/api/link-preview?url=${encodeURIComponent(item.url)}`,
+        );
+        if (!response.ok) {
+          return;
+        }
+        const data = (await response.json()) as LinkPreview;
+        if (!cancelled) {
+          setPreviews((prev) => ({ ...prev, [item.id]: data }));
+        }
+      } catch {
+        // Ignore preview failures.
+      }
+    };
+
+    wishlist.items.forEach(loadPreview);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [wishlist]);
+
   if (isLoading) {
     return (
       <main className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900 animate-fade-in">
@@ -143,6 +195,19 @@ export default function WishlistDetailPage() {
       </main>
     );
   }
+
+  const handleCardClick = (item: Item) => {
+    if (item.url) {
+      window.location.href = item.url;
+    }
+  };
+
+  const handleCardKeyDown = (event: KeyboardEvent, item: Item) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleCardClick(item);
+    }
+  };
 
   return (
     <main className="min-h-screen bg-slate-50 px-6 py-12 text-slate-900 animate-fade-in">
@@ -203,30 +268,71 @@ export default function WishlistDetailPage() {
           )}
         </Card>
 
-        <div className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-2">
           {wishlist.items.map((item) => (
-            <Card key={item.id} className="flex flex-col gap-3">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h2 className="text-lg font-semibold">{item.name}</h2>
-                  <p className="text-sm text-slate-600 break-all">{item.url}</p>
-                  <p className="text-xs text-slate-500 break-all">
-                    Referral: {item.referralUrl}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setItemToRemove(item)}
-                >
-                  Remove
-                </Button>
+            <Card
+              key={item.id}
+              className="grid cursor-pointer gap-4 transition hover:border-slate-300 hover:bg-slate-50 sm:grid-cols-[140px_1fr]"
+              role="link"
+              tabIndex={0}
+              onClick={() => handleCardClick(item)}
+              onKeyDown={(event) => handleCardKeyDown(event, item)}
+            >
+              <div className={`relative aspect-[4/3] overflow-hidden rounded-md sm:aspect-auto sm:h-full sm:min-h-[100px] ${previews[item.id]?.image ? '' : 'bg-slate-100'}`}>
+                {previews[item.id]?.image ? (
+                  <Image
+                    src={previews[item.id]?.image ?? ''}
+                    alt={previews[item.id]?.title || item.name}
+                    fill
+                    className="object-contain"
+                    unoptimized
+                    sizes="(min-width: 640px) 140px, 100vw"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-slate-400">
+                    No image
+                  </div>
+                )}
               </div>
-              {item.reservation && (
-                <div className="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-700">
-                  Reserved by {item.reservation.reservedByName || 'a friend'}
+              <div className="flex min-w-0 flex-col gap-2">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <h2 className="text-lg font-semibold leading-tight">
+                      {item.name}
+                    </h2>
+                    {previews[item.id]?.title && (
+                      <p className="truncate text-sm text-slate-700">
+                        {previews[item.id]?.title}
+                      </p>
+                    )}
+                    {item.url && (
+                      <p
+                        className="truncate text-sm text-slate-500"
+                        title={item.url}
+                      >
+                        {item.url}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setItemToRemove(item);
+                    }}
+                  >
+                    Remove
+                  </Button>
                 </div>
-              )}
+                {item.reservation && (
+                  <div className="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-700">
+                    Reserved by{' '}
+                    {item.reservation.reservedByName || 'a friend'}
+                  </div>
+                )}
+              </div>
             </Card>
           ))}
           {wishlist.items.length === 0 && (
