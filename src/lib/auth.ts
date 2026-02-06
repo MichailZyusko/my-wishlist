@@ -3,6 +3,13 @@ import GoogleProvider from 'next-auth/providers/google';
 import { getServerSession } from 'next-auth';
 import { prisma } from './prisma';
 
+interface GoogleProfile {
+  sub: string;
+  email: string;
+  name?: string;
+  picture?: string;
+}
+
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
@@ -15,21 +22,22 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ profile }) {
-      if (!profile?.sub || !profile.email) {
+      const googleProfile = profile as GoogleProfile | undefined;
+      if (!googleProfile?.sub || !googleProfile.email) {
         return false;
       }
       await prisma.user.upsert({
-        where: { googleId: profile.sub },
+        where: { googleId: googleProfile.sub },
         update: {
-          email: profile.email,
-          name: profile.name ?? 'User',
-          avatarUrl: profile.picture ?? null,
+          email: googleProfile.email,
+          name: googleProfile.name ?? 'User',
+          avatarUrl: googleProfile.picture ?? null,
         },
         create: {
-          googleId: profile.sub,
-          email: profile.email,
-          name: profile.name ?? 'User',
-          avatarUrl: profile.picture ?? null,
+          googleId: googleProfile.sub,
+          email: googleProfile.email,
+          name: googleProfile.name ?? 'User',
+          avatarUrl: googleProfile.picture ?? null,
         },
       });
       return true;
